@@ -26,8 +26,10 @@ public class Guest {
         this.id = id;
     }
 
-    public Guest(int id) {
+    public Guest(int id, long chatId) {
         this.id = id;
+        this.chatId = chatId;
+        currentCommand = BotCommands.NONE;
     }
 
     public BotCommands getCurrentCommand(){
