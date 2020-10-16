@@ -9,130 +9,131 @@ import java.util.Map;
 
 public class GuestInteractor {
     private static Bot bot = Bot.getBot();
-    private static Map<Integer,Guest> guestMap= new HashMap<Integer,Guest>();
+    private static Map<Integer,Guest> guestMap= new HashMap<>();
 
-    public static void receiveMessage(int guestId, String message, long chatId) throws SQLException {
-        Guest guest = null;
+    public static void receiveMessage(int guestId, String messageText, long chatId) {
+        Guest guest;
         if(guestMap.containsKey(guestId)){
             guest = guestMap.get(guestId);
         } else {
-            guest = new Guest(guestId);
+            guest = new Guest(guestId, chatId);
             guestMap.put(guestId, guest);
-            guest.setChatId(chatId);
         }
-        boolean isCommand = false;
-        if(message.startsWith("/")){
-            BotCommands botCommand = BotCommands.getCommand(message);
-            if(botCommand == null){
-                bot.sendMsg(String.valueOf(chatId), "неверная команда, повторите команду.");
+        if(messageText.startsWith("/")){
+            BotCommands botCommand = BotCommands.getCommand(messageText);
+            if(botCommand == BotCommands.NONE){
+                bot.sendMsg(chatId, "неверная команда, повторите команду.");
             } else {
                 processCommand(botCommand, guest);
             }
         } else {
-            processMessage(message, guest);
+            processMessage(messageText, guest);
         }
     }
 
-    public static void processCommand(BotCommands botCommand, Guest guest) throws SQLException {
+    public static void processCommand(BotCommands botCommand, Guest guest) {
         String messageText = "";
+        long chatId = guest.getChatId();
         switch (botCommand){
-            case START: bot.sendMsg(String.valueOf(guest.getChatId()),"этот бот сохраняет ваши заметки.");
-            sendDefaultMessage(guest);
+            case START: bot.sendMsg(chatId,"этот бот сохраняет ваши заметки.");
+            sendDefaultMessage(chatId);
             break;
-            case ADD: bot.sendMsg(String.valueOf(guest.getChatId()),"напишите текст заметки");
+            case ADD: bot.sendMsg(chatId,"напишите текст заметки");
             guest.setCurrentCommand(botCommand);
             break;
-            case DELETE: bot.sendMsg(String.valueOf(guest.getChatId()),"напишите номер заметки, которую нужно удалить");
+            case DELETE: bot.sendMsg(chatId,"напишите номер заметки, которую нужно удалить");
             guest.setCurrentCommand(botCommand);
             break;
             case LIST: sendNotesList(guest);
-            sendDefaultMessage(guest);
-            guest.setCurrentCommand(null);
+            sendDefaultMessage(chatId);
+            guest.setCurrentCommand(BotCommands.NONE);
             break;
         }
     }
 
     public static void sendNotesList(Guest guest) {
-        String result = "";
-        try (Connection connection = SQLConnect.getConnection();){
+        StringBuilder result = new StringBuilder();
+        long chatId = guest.getChatId();
+        try (Connection connection = SQLConnect.getConnection()){
             PreparedStatement statement = connection.prepareStatement("select note, noteid from guests_notes where userid = ?");
             statement.setString(1, String.valueOf(guest.getId()));
             ResultSet resultSet = statement.executeQuery();
             while (resultSet.next()){
                 String note = resultSet.getString("note");
                 String noteId = resultSet.getString("noteid");
-                result+= String.format("(%s) %s \n", noteId, note);
+                result.append(String.format("(%s) %s \n", noteId, note));
             }
-            result = (result.isEmpty())? "заметки отсутствуют!": result;
-        } catch (SQLException e){
-            result = "не удалось подключиться к базе данных. Попробуйте позже";
+            result = new StringBuilder((result.length() == 0) ? "заметки отсутствуют!" : result.toString());
+        } catch (DatabaseConnectionException | SQLException e){
+            sendDatabaseFailNotification(chatId);
         }
-        bot.sendMsg(String.valueOf(guest.getChatId()), result);
+        bot.sendMsg(chatId, result.toString());
     }
 
-    public static void sendDefaultMessage(Guest guest){
-        bot.sendMsg(String.valueOf(guest.getChatId()),"Для управления заметками используйте следующие команды:\n /add - для добавления заметки \n /delete - для удаления заметки \n /list - для получения всех заметок.");
+    public static void sendDefaultMessage(long chatId){
+        bot.sendMsg(chatId,"Для управления заметками используйте следующие команды:\n /add - для добавления заметки \n /delete - для удаления заметки \n /list - для получения всех заметок.");
     }
 
     public static void processMessage(String messageText, Guest guest) {
+        int guestId = guest.getId();
+        long chatId = guest.getChatId();
         String result = "";
         BotCommands currentCommand = guest.getCurrentCommand();
-        if(currentCommand == null) sendDefaultMessage(guest);
-        else if(currentCommand == BotCommands.ADD){
+        if(currentCommand == BotCommands.ADD){
             //добавляем запись в базу, если успешно - сообщаем что запись добавлена
             try (Connection connection = SQLConnect.getConnection()){
                 int lastNoteId = 1;
                 PreparedStatement statement = connection.prepareStatement("select max(noteId) from guests_notes where userid = ? group by userid");
-                statement.setString(1, String.valueOf(guest.getId()));
+                statement.setString(1, String.valueOf(guestId));
                 ResultSet resultSet = statement.executeQuery();
                 if (resultSet.next()){
                     lastNoteId = resultSet.getInt("max(noteId)");
                     lastNoteId++;
                 }
                 PreparedStatement statement1 = connection.prepareStatement("insert into guests_notes values(?, ?, ?);");
-                statement1.setString(1, String.valueOf(guest.getId()));
+                statement1.setString(1, String.valueOf(guestId));
                 statement1.setString(2, messageText);
                 statement1.setString(3, String.valueOf(lastNoteId));
                 statement1.execute();
-            } catch (SQLException e) {
-                result = "не удалось подключиться к базе данных.";
+            } catch (SQLException | DatabaseConnectionException e) {
+                sendDatabaseFailNotification(chatId);
             }
-            bot.sendMsg(String.valueOf(guest.getChatId()), "заметка сохранена.");
-            sendDefaultMessage(guest);
-            guest.setCurrentCommand(null);
+            bot.sendMsg(chatId, "заметка сохранена.");
         } else if(currentCommand == BotCommands.DELETE){
             //парсим в сообщении число int, ищем сообщение, если нашли удаляем, пишем что удалено успешно, иначе выводим сообщение что заметка не найдена
             try(Connection connection = SQLConnect.getConnection()){
                 int noteId = Integer.parseInt(messageText);
                 PreparedStatement statement = connection.prepareStatement("select note from guests_notes where userid = ? and noteid = ?");
-                statement.setString(1, String.valueOf(guest.getId()));
+                statement.setString(1, String.valueOf(guestId));
                 statement.setString(2, String.valueOf(noteId));
                 ResultSet resultSet = statement.executeQuery();
                 if(!resultSet.next()){
-                    bot.sendMsg(String.valueOf(guest.getChatId()), "не найдена заметка под данным номером, попробуйте снова.");
+                    bot.sendMsg(chatId, "не найдена заметка под данным номером, попробуйте снова.");
                     return;
                 }
                 PreparedStatement statement1 = connection.prepareStatement("delete from guests_notes where userid = ? and noteid = ?");
-                statement1.setString(1, String.valueOf(guest.getId()));
+                statement1.setString(1, String.valueOf(guestId));
                 statement1.setString(2, String.valueOf(noteId));
                 statement1.execute();
                 PreparedStatement statement2 = connection.prepareStatement("update guests_notes set noteid = noteid - 1 where userid = ? and noteid > ?");
-                statement2.setString(1, String.valueOf(guest.getId()));
+                statement2.setString(1, String.valueOf(guestId));
                 statement2.setString(2, String.valueOf(noteId));
                 statement2.execute();
-                bot.sendMsg(String.valueOf(guest.getChatId()), "заметка удалена.");
-                sendDefaultMessage(guest);
-                guest.setCurrentCommand(null);
-            } catch (NumberFormatException | SQLException e){
+                bot.sendMsg(chatId, "заметка удалена.");
+            } catch (NumberFormatException | SQLException | DatabaseConnectionException e){
                 if(e instanceof SQLException){
-                    result = "не удалось подключиться к базе данных.";
-                    sendDefaultMessage(guest);
-                    guest.setCurrentCommand(null);
-                } else if(e instanceof NumberFormatException){
-                    bot.sendMsg(String.valueOf(guest.getChatId()), "введите номер заметки, которую хотите удалить. Сообщение должно содержать только цифры.");
+                    sendDatabaseFailNotification(chatId);
+                } else {
+                    bot.sendMsg(chatId, "введите номер заметки, которую хотите удалить. Сообщение должно содержать только цифры.");
+                    return;
                 }
             }
         }
+        sendDefaultMessage(chatId);
+        guest.setCurrentCommand(BotCommands.NONE);
     }
 
+    static void sendDatabaseFailNotification(long chatId){
+        bot.sendMsg(chatId, "не удалось подключиться к базе данных.");
+    }
 }

@@ -6,8 +6,6 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import java.sql.SQLException;
-
 
 public class Bot extends TelegramLongPollingBot {
     private static final String botUserName = "ArthurNotes_bot";
@@ -28,14 +26,10 @@ public class Bot extends TelegramLongPollingBot {
         Message message = update.getMessage();
         if(!message.hasText()) return;
         String messageText = update.getMessage().getText();
-        try {
-            GuestInteractor.receiveMessage(message.getFrom().getId(),messageText, message.getChatId());
-        } catch (SQLException e) {
-            logger.info("Exception: ", e.toString());
-        }
+        GuestInteractor.receiveMessage(message.getFrom().getId(),messageText, message.getChatId());
     }
 
-    public synchronized void sendMsg(String chatId, String s) {
+    public synchronized void sendMsg(long chatId, String s) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.enableMarkdown(true);
         sendMessage.setChatId(chatId);
@@ -43,7 +37,7 @@ public class Bot extends TelegramLongPollingBot {
         try {
             execute(sendMessage);
         } catch (TelegramApiException e) {
-           logger.info("Exception: ", e.toString());
+           logger.info("Exception: " + e.toString());
         }
     }
 

@@ -2,18 +2,19 @@ public enum BotCommands {
     START,
     ADD,
     DELETE,
-    LIST;
+    LIST,
+    NONE;
 
     public static BotCommands getCommand(String string){
-        BotCommands botCommand = null;
+        BotCommands botCommand = NONE;
         switch (string){
-            case "/start": botCommand = BotCommands.START;
+            case "/start": botCommand = START;
             break;
-            case "/add": botCommand = BotCommands.ADD;
+            case "/add": botCommand = ADD;
             break;
-            case "/delete": botCommand = BotCommands.DELETE;
+            case "/delete": botCommand = DELETE;
             break;
-            case "/list": botCommand = BotCommands.LIST;
+            case "/list": botCommand = LIST;
             break;
         }
         return botCommand;
