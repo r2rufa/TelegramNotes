@@ -115,6 +115,9 @@ public class SQLConnect implements AutoCloseable {
                 nextString.append(subString);
             }
         }
+        if(nextString.length()>0){
+            notesList.add(nextString.toString());
+        }
         if(notesList.size() == 0){
             notesList.add("заметки отсутствуют!");
         }
