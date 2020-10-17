@@ -10,7 +10,7 @@ public class Guest {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Guest guest = (Guest) o;
-        return id == guest.id;
+        return id == guest.getId();
     }
 
     @Override
@@ -20,10 +20,6 @@ public class Guest {
 
     public int getId() {
         return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
     }
 
     public Guest(int id, long chatId) {
