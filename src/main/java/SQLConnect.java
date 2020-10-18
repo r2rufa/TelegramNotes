@@ -110,7 +110,7 @@ public class SQLConnect implements AutoCloseable {
         while (resultSet.next()){
             String note = resultSet.getString("note");
             String noteId = resultSet.getString("noteid");
-            String subString = (String.format("(%s) %s \n", noteId, note));
+            String subString = String.format("(%s) %s \n", noteId, note);
             if(nextString.length() + subString.length() > 4000){
                 notesList.add(nextString.toString());
                 nextString = new StringBuilder(subString);
