@@ -19,6 +19,7 @@ public class GuestInteractor {
         Guest guest;
         if(guestMap.containsKey(guestId)){
             guest = guestMap.get(guestId);
+            if(guest.getChatId() != chatId) guest.setChatId(chatId);
         } else {
             guest = new Guest(guestId, chatId);
             guestMap.put(guestId, guest);
