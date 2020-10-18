@@ -105,7 +105,11 @@ public class GuestInteractor {
         try (SQLConnect sqlConnect = new SQLConnect()){
             int noteId = sqlConnect.getNewNoteId(guestId);
             sqlConnect.addNote(guestId, noteId, messageText);
-            bot.sendMsg(chatId, "заметка сохранена.");
+            if(messageText.length()>4000){
+                bot.sendMsg(chatId, "сообщение слишком длинное, сохранены первые 4000 символов.");
+            } else {
+                bot.sendMsg(chatId, "заметка сохранена.");
+            }
         } catch (SQLException | DatabaseConnectionException e) {
             sendDatabaseFailNotification(chatId);
             if(e instanceof SQLException){

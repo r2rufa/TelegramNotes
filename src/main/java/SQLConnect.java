@@ -89,6 +89,9 @@ public class SQLConnect implements AutoCloseable {
     }
 
     public void addNote(int guestId, int noteId, String note) throws SQLException {
+        if(note.length()>4000){
+            note = note.substring(0, 4001);
+        }
         PreparedStatement statementInsertNote = connection.prepareStatement(
                 "INSERT INTO guests_notes VALUES(?, ?, ?);");
         statementInsertNote.setString(1, String.valueOf(guestId));
@@ -108,7 +111,7 @@ public class SQLConnect implements AutoCloseable {
             String note = resultSet.getString("note");
             String noteId = resultSet.getString("noteid");
             String subString = (String.format("(%s) %s \n", noteId, note));
-            if(nextString.length() + subString.length() > 1000){
+            if(nextString.length() + subString.length() > 4000){
                 notesList.add(nextString.toString());
                 nextString = new StringBuilder(subString);
             } else {
