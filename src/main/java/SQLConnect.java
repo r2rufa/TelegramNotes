@@ -34,7 +34,7 @@ public class SQLConnect implements AutoCloseable {
         return connection;
     }
 
-    public void connect() throws DatabaseConnectionException {
+    private void connect() throws DatabaseConnectionException {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
         } catch (ClassNotFoundException e) {
@@ -79,11 +79,11 @@ public class SQLConnect implements AutoCloseable {
     public int getNewNoteId(int guestId) throws SQLException {
         int noteId = 1;
         PreparedStatement statementLastNoteId = connection.prepareStatement(
-                "SELECT max(noteId) FROM guests_notes WHERE userid = ? GROUP BY userid");
+                "SELECT MAX(noteId) FROM guests_notes WHERE userid = ?");
         statementLastNoteId.setString(1, String.valueOf(guestId));
         ResultSet resultSet = statementLastNoteId.executeQuery();
         if (resultSet.next()){
-            noteId += resultSet.getInt("max(noteId)");
+            noteId += resultSet.getInt("MAX(noteId)");
         }
         return noteId;
     }
