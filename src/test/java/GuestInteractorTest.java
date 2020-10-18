@@ -43,6 +43,9 @@ class GuestInteractorTest<PowerMockRule> {
 
     @Test
     void receiveMessage() {
+        //не смог пока разобраться как воспользоваться данными классами для моего случая: метод статический, ничего не возвращает
+        //надо в результате вызова метода посчитать количество вызовов методов bot.sendMsg, processCommand и processMessage в зависимости
+        //от входящего сообщения. В оставшихся двух методах аналогично.
         PowerMockito.mockStatic(GuestInteractor.class);
         doNothing().when(GuestInteractor.class);
         GuestInteractor.receiveMessage(anyInt(), anyString(), anyLong());
